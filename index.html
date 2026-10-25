@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Husrenoveringen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column like a phone note — summary + tape-measure bar on top, posts as expandable rows below */
+:root{
+  --bg:#EEF0F1; --surface:#FFFFFF; --ink:#1E2629; --muted:#5E6A6F; --line:#D5DADC;
+  --tape:#E9B121; --tape-ink:#2A2208; --good:#2F7D4F; --warn:#B26A00; --bad:#C0392B;
+  --chip:#E3E7E9;
+  --display:"Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141A1C; --surface:#1D2427; --ink:#E7ECEE; --muted:#97A3A8; --line:#2E383C;
+  --tape:#F0BE3A; --tape-ink:#231B05; --good:#5CC48A; --warn:#E5A23C; --bad:#F06A5A; --chip:#2A3337; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141A1C; --surface:#1D2427; --ink:#E7ECEE; --muted:#97A3A8; --line:#2E383C;
+  --tape:#F0BE3A; --tape-ink:#231B05; --good:#5CC48A; --warn:#E5A23C; --bad:#F06A5A; --chip:#2A3337; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding-block:20px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1{font-size:28px;font-weight:700;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--tape);outline-offset:2px}
+
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:16px}
+.budgetline{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.budgetline .big{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:-.02em}
+.budget-edit{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px}
+.budget-edit input{width:120px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--mono);text-align:right}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+@media (min-width:560px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--mono);font-size:18px;font-weight:500}
+.stat .l{font-size:13px;color:var(--muted)}
+.v.bad{color:var(--bad)} .v.good{color:var(--good)}
+
+/* tape measure */
+.tape{position:relative;height:44px;border-radius:6px;background:var(--chip);overflow:hidden;border:1px solid var(--line)}
+.tape .fill{position:absolute;inset:0 auto 0 0;background:var(--tape);transition:width .4s ease}
+.tape .fill.over{background:var(--bad)}
+.tape .fc{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);opacity:.55}
+.tape .ticks{position:absolute;inset:0;pointer-events:none}
+.tape .t{position:absolute;bottom:0;width:1px;background:var(--ink);opacity:.35}
+.tape .tl{position:absolute;top:3px;font-family:var(--mono);font-size:10px;color:var(--ink);opacity:.7;transform:translateX(3px)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;background:var(--tape);display:inline-block}
+.sw.fc{width:2px;height:14px;background:var(--ink);border-radius:0;opacity:.6}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 12px;font-size:14px}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.item{border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.row{width:100%;display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;background:none;border:0;text-align:left}
+.dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center}
+.dot.pagar{border-color:var(--warn);background:linear-gradient(90deg,var(--warn) 50%,transparent 50%)}
+.dot.klar{border-color:var(--good);background:var(--good)}
+.dot.klar::after{content:"";width:6px;height:10px;border:solid var(--surface);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.name{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.name small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.amt{text-align:right;font-family:var(--mono);font-size:14px;white-space:nowrap}
+.amt .a{display:block}
+.amt .b{display:block;color:var(--muted);font-size:12px}
+.amt .a.over{color:var(--bad)}
+.minibar{grid-column:2 / 4;height:4px;border-radius:2px;background:var(--chip);overflow:hidden;margin-top:-4px}
+.minibar i{display:block;height:100%;background:var(--tape)}
+.minibar i.over{background:var(--bad)}
+
+.detail{padding:4px 16px 18px 50px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:460px){.detail{padding-left:16px}}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.field textarea{min-height:60px;resize:vertical}
+.field.full{grid-column:1 / -1}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 12px;font-size:14px}
+.seg button[aria-pressed="true"].s-ej{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg button[aria-pressed="true"].s-pagar{background:var(--warn);color:#fff;border-color:var(--warn)}
+.seg button[aria-pressed="true"].s-klar{background:var(--good);color:#fff;border-color:var(--good)}
+
+.exp{display:flex;flex-direction:column;gap:6px}
+.exp h3{margin:0;font-size:14px;font-weight:600}
+.exp ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.exp li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.exp li .d{color:var(--muted);font-size:12px;display:block}
+.exp li .x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px}
+.exp .none{color:var(--muted);font-size:14px}
+.addexp{display:grid;grid-template-columns:minmax(0,1fr) 110px auto;gap:8px}
+.addexp input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0}
+.btn{border:0;border-radius:8px;padding:8px 14px;background:var(--tape);color:var(--tape-ink);font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.danger{background:var(--bad);color:#fff}
+.del{align-self:flex-start;font-size:13px;padding:6px 10px}
+
+.addpost{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px}
+.addpost input{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+@media (max-width:420px){.addpost,.addexp{grid-template-columns:1fr 1fr}.addpost input:first-child,.addexp input:first-child{grid-column:1 / -1}}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.status{font-size:13px;color:var(--muted);min-height:1em}
+.status.err{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:4px">
+    <span class="eyebrow">Renovering · nya huset</span>
+    <h1>Husrenoveringen</h1>
+  </header>
+
+  <section class="summary" aria-label="Sammanfattning">
+    <div class="budgetline">
+      <div>
+        <div class="eyebrow">Kvar av budget</div>
+        <div class="big" id="left">–</div>
+      </div>
+      <label class="budget-edit" for="totalBudget">Total budget
+        <input id="totalBudget" type="number" inputmode="numeric" min="0" step="1000" placeholder="400000">
+        kr</label>
+    </div>
+    <div class="tape" id="tape" aria-hidden="true"><div class="fill" id="tapeFill" style="width:0"></div><div class="fc" id="tapeFc" style="left:0"></div><div class="ticks" id="ticks"></div></div>
+    <div class="legend"><span><i class="sw"></i>Betalt hittills</span><span><i class="sw fc"></i>Prognos</span></div>
+    <div class="stats">
+      <div class="stat"><span class="v num" id="sPlanned">–</span><span class="l">Planerat på poster</span></div>
+      <div class="stat"><span class="v num" id="sSpent">–</span><span class="l">Faktisk kostnad</span></div>
+      <div class="stat"><span class="v num" id="sForecast">–</span><span class="l">Prognos</span></div>
+      <div class="stat"><span class="v num" id="sOwn">–</span><span class="l">Egen del (prognos)</span></div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="filters" role="group" aria-label="Filter">
+      <button type="button" data-f="alla" aria-pressed="true">Alla</button>
+      <button type="button" data-f="ej">Ej påbörjad</button>
+      <button type="button" data-f="pagar">Pågår</button>
+      <button type="button" data-f="klar">Klar</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="status" id="status" role="status"></span><button type="button" class="btn ghost" id="exportBtn" style="font-size:13px;padding:6px 10px">Exportera</button><label class="btn ghost" for="importFile" style="font-size:13px;padding:6px 10px;cursor:pointer">Importera</label><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <form class="addpost" id="addPost" autocomplete="off">
+    <input id="newName" placeholder="Ny post, t.ex. Elarbete" required aria-label="Namn på ny post">
+    <input id="newBudget" type="number" inputmode="numeric" min="0" step="500" placeholder="Budget kr" aria-label="Budget för ny post">
+    <button class="btn" type="submit">Lägg till</button>
+  </form>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const fmt = n => Math.round(n||0).toLocaleString('sv-SE') + ' kr';
+  const kfmt = n => (n>=1000 ? Math.round(n/1000)+'k' : String(n));
+  const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const STATUS = {ej:'Ej påbörjad', pagar:'Pågår', klar:'Klar'};
+  const PAYERS = ['Vi','Abbes föräldrar','Annan'];
+  const KEY='husrenoveringen-v2';
+  const DEFAULT = {totalBudget:450000, items:[
+    ['golv','Köpa golv',40000,'Abbes föräldrar','Abbes föräldrar bjuder'],['farg','Färg',22000],['kakel','Kakel',25000],['listor','Listor',7000],
+    ['badrum','Badrum (Polen)',35000],['tvattrum','Tvättrum',35000],['inredning','Inredning',200000],['bankskiva','Bänkskiva',10000],
+    ['diverse','Diverse kostnader',26000],['arbetare','Betala arbetare',50000]
+  ].map((r,i)=>({id:r[0],name:r[1],budget:r[2],status:'ej',payer:r[3]||'Vi',note:r[4]||'',order:i+1,expenses:[]}))};
+
+  let state; try{ state = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!state || !Array.isArray(state.items)) state = JSON.parse(JSON.stringify(DEFAULT));
+  let open=new Set(), filter='alla', pending=false;
+  try{ filter = localStorage.getItem('reno-filter')||'alla'; }catch(e){}
+
+  function save(msg){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); if(msg) setStatus(msg); }
+    catch(e){ setStatus('Kunde inte spara i webbläsaren. Exportera för säkerhets skull.', true); }
+  }
+  const items = () => state.items.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  const spentOf = it => (it.expenses||[]).reduce((s,e)=>s+(+e.amount||0),0);
+  const forecastOf = it => { const s=spentOf(it); return it.status==='klar' ? s : Math.max(+it.budget||0, s); };
+  function setStatus(msg, err){ const el=$('#status'); el.textContent=msg||''; el.classList.toggle('err',!!err); if(msg&&!err) setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; },1800); }
+
+  function renderSummary(){
+    const its=state.items, totalBudget=state.totalBudget;
+    const planned = its.reduce((s,i)=>s+(+i.budget||0),0);
+    const spent = its.reduce((s,i)=>s+spentOf(i),0);
+    const forecast = its.reduce((s,i)=>s+forecastOf(i),0);
+    const own = its.filter(i=>(i.payer||'Vi')==='Vi').reduce((s,i)=>s+forecastOf(i),0);
+    const left = totalBudget - spent;
+    $('#left').textContent = fmt(left); $('#left').style.color = left<0?'var(--bad)':'';
+    $('#sPlanned').textContent = fmt(planned);
+    $('#sSpent').textContent = fmt(spent);
+    const f=$('#sForecast'); f.textContent = fmt(forecast); f.className='v num '+(forecast>totalBudget?'bad':'good');
+    $('#sOwn').textContent = fmt(own);
+    const ti=$('#totalBudget'); if(document.activeElement!==ti) ti.value = totalBudget;
+    const scale = Math.max(totalBudget, forecast, spent, 1);
+    $('#tapeFill').style.width = Math.min(100, spent/scale*100)+'%';
+    $('#tapeFill').classList.toggle('over', spent>totalBudget);
+    $('#tapeFc').style.left = 'calc('+Math.min(100, forecast/scale*100)+'% - 1px)';
+    const step = scale>600000?100000:50000; let h='';
+    for(let v=step; v<scale; v+=step){ const p=v/scale*100; const major = v%100000===0;
+      h += '<i class="t" style="left:'+p+'%;height:'+(major?18:10)+'px"></i>' + (major?'<span class="tl" style="left:'+p+'%">'+kfmt(v)+'</span>':''); }
+    if(totalBudget<scale) h += '<i class="t" style="left:'+(totalBudget/scale*100)+'%;height:100%;opacity:.9;background:var(--bad)"></i>';
+    $('#ticks').innerHTML = h;
+  }
+
+  function itemHTML(it){
+    const spent=spentOf(it), b=+it.budget||0, over = spent>b && b>0;
+    const isOpen = open.has(it.id), st = it.status||'ej';
+    const pct = b>0 ? Math.min(100, spent/b*100) : (spent>0?100:0);
+    const sub = [STATUS[st]]; if(it.payer && it.payer!=='Vi') sub.push(it.payer+' betalar');
+    const exps = (it.expenses||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    return '<div class="item" data-id="'+esc(it.id)+'">'
+     + '<button class="row" type="button" data-act="toggle" aria-expanded="'+isOpen+'">'
+     +   '<span class="dot '+st+'" aria-hidden="true"></span>'
+     +   '<span class="name">'+esc(it.name)+'<small>'+esc(sub.join(' · '))+'</small></span>'
+     +   '<span class="amt"><span class="a'+(over?' over':'')+'">'+fmt(spent)+'</span><span class="b">av '+fmt(b)+'</span></span>'
+     +   '<span class="minibar"><i class="'+(over?'over':'')+'" style="width:'+pct+'%"></i></span>'
+     + '</button>'
+     + (isOpen ? '<div class="detail">'
+       + '<div class="seg" role="group" aria-label="Status">'
+       +   Object.keys(STATUS).map(k=>'<button type="button" class="s-'+k+'" data-act="status" data-v="'+k+'" aria-pressed="'+(st===k)+'">'+STATUS[k]+'</button>').join('')
+       + '</div>'
+       + '<div class="fields">'
+       +   '<div class="field"><label for="n-'+it.id+'">Namn</label><input id="n-'+it.id+'" data-fld="name" value="'+esc(it.name)+'"></div>'
+       +   '<div class="field"><label for="b-'+it.id+'">Budget (kr)</label><input id="b-'+it.id+'" class="num" data-fld="budget" type="number" inputmode="numeric" min="0" step="500" value="'+b+'"></div>'
+       +   '<div class="field"><label for="p-'+it.id+'">Betalas av</label><select id="p-'+it.id+'" data-fld="payer">'+PAYERS.map(p=>'<option'+((it.payer||'Vi')===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'
+       +   '<div class="field"><label>Kvar på posten</label><div class="num" style="padding:8px 0;'+(b-spent<0?'color:var(--bad)':'')+'">'+fmt(b-spent)+'</div></div>'
+       +   '<div class="field full"><label for="c-'+it.id+'">Anteckning</label><textarea id="c-'+it.id+'" data-fld="note" placeholder="Leverantör, offert, mått…">'+esc(it.note)+'</textarea></div>'
+       + '</div>'
+       + '<div class="exp"><h3>Utgifter</h3>'
+       +   (exps.length ? '<ul>'+exps.map(e=>'<li><span>'+esc(e.text||'Utgift')+'<span class="d">'+esc(e.date||'')+'</span></span><span class="num">'+fmt(e.amount)+'</span><button type="button" class="x" data-act="rmexp" data-e="'+esc(e.id)+'" aria-label="Ta bort utgift">×</button></li>').join('')+'</ul>' : '<span class="none">Inga utgifter registrerade än.</span>')
+       +   '<form class="addexp" autocomplete="off"><input name="t" placeholder="Vad, t.ex. Faktura Bauhaus" aria-label="Beskrivning"><input name="a" type="number" inputmode="decimal" step="any" min="0" placeholder="Belopp" required aria-label="Belopp i kr"><button class="btn" type="submit">Lägg till</button></form>'
+       + '</div>'
+       + '<button type="button" class="btn ghost del" data-act="del">Ta bort posten</button>'
+       + '</div>' : '')
+     + '</div>';
+  }
+
+  function render(){
+    const list=$('#list');
+    if(list.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')){ pending=true; renderSummary(); return; }
+    pending=false; renderSummary();
+    document.querySelectorAll('.filters button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.f===filter));
+    const all=items(), shown = all.filter(i=>filter==='alla'||(i.status||'ej')===filter);
+    if(!all.length){ list.innerHTML='<div class="empty">Inga poster än. Lägg till din första post här nedanför.</div>'; return; }
+    if(!shown.length){ list.innerHTML='<div class="empty">Inga poster med status ”'+STATUS[filter]+'”.</div>'; return; }
+    list.innerHTML = shown.map(itemHTML).join('');
+  }
+  const findItem = id => state.items.find(i=>i.id===id);
+  const commit = (msg) => { save(msg); render(); };
+
+  document.querySelector('.filters').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return; filter=b.dataset.f;
+    try{ localStorage.setItem('reno-filter',filter); }catch(_){}
+    render();
+  });
+  $('#list').addEventListener('focusout', ()=>{ setTimeout(()=>{ if(pending && !$('#list').contains(document.activeElement)) render(); },0); });
+  $('#list').addEventListener('click', e=>{
+    const el=e.target.closest('[data-act]'); if(!el) return;
+    const id=el.closest('.item').dataset.id; const it=findItem(id); if(!it) return;
+    const act=el.dataset.act;
+    if(act==='toggle'){ open.has(id)?open.delete(id):open.add(id); pending=false; render(); }
+    else if(act==='status'){ it.status=el.dataset.v; commit('Sparat'); }
+    else if(act==='rmexp'){ it.expenses=(it.expenses||[]).filter(x=>x.id!==el.dataset.e); commit('Utgift borttagen'); }
+    else if(act==='del'){
+      if(el.dataset.confirm){ open.delete(id); state.items=state.items.filter(i=>i.id!==id); commit('Posten borttagen'); }
+      else { el.dataset.confirm='1'; el.textContent='Tryck igen för att ta bort'; el.classList.remove('ghost'); el.classList.add('danger');
+        setTimeout(()=>{ if(el.isConnected){ delete el.dataset.confirm; el.textContent='Ta bort posten'; el.classList.add('ghost'); el.classList.remove('danger'); } },4000); }
+    }
+  });
+  $('#list').addEventListener('change', e=>{
+    const f=e.target.dataset.fld; if(!f) return; const it=findItem(e.target.closest('.item').dataset.id); if(!it) return;
+    let v=e.target.value; if(f==='budget') v=Math.max(0, Math.round(+v||0)); if(f==='name'){ v=v.trim(); if(!v) return; }
+    if(it[f]===v) return; it[f]=v; save('Sparat'); if(f!=='note') render();
+  });
+  $('#list').addEventListener('submit', e=>{
+    e.preventDefault(); const form=e.target; const it=findItem(form.closest('.item').dataset.id); if(!it) return;
+    const amount = +String(form.a.value).replace(',','.'); if(!(amount>0)) return;
+    const d=new Date(); const date = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    it.expenses=(it.expenses||[]).concat([{id:'e'+Date.now().toString(36), text:form.t.value.trim(), amount, date}]);
+    if(it.status==='ej') it.status='pagar';
+    document.activeElement && document.activeElement.blur(); commit('Utgift tillagd');
+  });
+  $('#addPost').addEventListener('submit', e=>{
+    e.preventDefault(); const name=$('#newName').value.trim(); if(!name) return;
+    const budget=Math.max(0,Math.round(+$('#newBudget').value||0));
+    const order = state.items.reduce((m,i)=>Math.max(m,+i.order||0),0)+1;
+    state.items.push({id:'p'+Date.now().toString(36),name,budget,status:'ej',payer:'Vi',note:'',order,expenses:[]});
+    $('#newName').value=''; $('#newBudget').value=''; commit('Post tillagd');
+  });
+  $('#totalBudget').addEventListener('change', e=>{
+    const v=Math.max(0,Math.round(+e.target.value||0)); if(v===state.totalBudget) return;
+    state.totalBudget=v; save('Budget sparad'); renderSummary();
+  });
+  $('#exportBtn').addEventListener('click', ()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='husrenoveringen-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    setStatus('Exporterad');
+  });
+  $('#importFile').addEventListener('change', e=>{
+    const file=e.target.files[0]; if(!file) return;
+    file.text().then(t=>{ const d=JSON.parse(t); if(!d || !Array.isArray(d.items)) throw 0;
+      state={totalBudget:+d.totalBudget||0, items:d.items}; open.clear(); commit('Importerad');
+    }).catch(()=>setStatus('Filen kunde inte läsas. Välj en fil du exporterat härifrån.', true));
+    e.target.value='';
+  });
+  render();
+})();
+</script>
+</body>
+</html>
